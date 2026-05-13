@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "Book": {
+      "title": "Book",
+      "description": "A book in the library collection",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the book" },
+        "author": { "type": "string", "description": "The author of the book" },
+        "isbn": { "type": "string", "description": "International Standard Book Number" },
+        "category": { "type": "string", "description": "Genre or category" },
+        "status": { "type": "string", "enum": ["available", "borrowed"], "description": "Current status of the book" },
+        "year": { "type": "number", "description": "Publication year" },
+        "amount": { "type": "number", "description": "Price or value of the book" },
+        "coverUrl": { "type": "string", "description": "URL to the book cover image" },
+        "addedBy": { "type": "string", "description": "UID of the employee/admin who added the book" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "author", "isbn", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the library system",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "employee", "admin"] },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "A record of a user borrowing a book",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "enrolledAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "bookId"]
+    }
+  },
+  "firestore": {
+    "books": { "schema": "Book", "description": "Collection of books" },
+    "users": { "schema": "User", "description": "Collection of user profiles" },
+    "enrollments": { "schema": "Enrollment", "description": "Collection of borrowing records" }
+  }
+}

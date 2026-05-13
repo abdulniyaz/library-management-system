@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function getUserData() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
+    }
+
+    function isRole(role) {
+      let data = getUserData();
+      return isSignedIn() && data != null && data.role == role;
+    }
+
+    function isAdmin() { return isRole('admin'); }
+    function isEmployee() { return isRole('employee') || isAdmin(); }
+
+    // Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'email', 'role']) &&
+               data.uid is string && data.uid.size() <= 128 &&
+               data.email is string && data.email.size() <= 256 &&
+               data.role in ['student', 'employee', 'admin'];
+      }
+
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && 
+                    (incoming().role == 'student' || (incoming().role == 'admin' && request.auth.token.email == 'abdulniyazhombal@gmail.com'));
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin()) &&
+                    isValidUser(incoming()) &&
+                    (isAdmin() || incoming().role == existing().role); // Can't change own role unless admin
+    }
+
+    // Books Collection
+    match /books/{bookId} {
+      function isValidBook(data) {
+        return data.keys().hasAll(['title', 'author', 'isbn', 'status', 'category', 'year']) &&
+               data.title is string && data.title.size() <= 512 &&
+               data.author is string && data.author.size() <= 512 &&
+               data.isbn is string && data.isbn.size() <= 64 &&
+               data.status in ['available', 'borrowed'] &&
+               data.category is string &&
+               data.year is int &&
+               (data.get('amount', 0) is number || data.get('amount', 0) is int) &&
+               (data.get('coverUrl', '') == '' || data.coverUrl is string) &&
+               (data.get('addedBy', '') == '' || data.addedBy is string);
+      }
+
+      allow read: if true;
+      allow create: if isSignedIn() && isValidBook(incoming());
+      allow update: if isEmployee() && isValidBook(incoming());
+      allow delete: if isEmployee();
+    }
+
+    // Enrollments Collection
+    match /enrollments/{enrollmentId} {
+      allow read, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmployee());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmployee());
+    }
+  }
+}
